@@ -107,3 +107,8 @@ Buat:
 - contoh producer & consumer
 - example API sederhana
 - contoh flow event antar service
+
+# Database :
+- kafka_booking_service
+- kafka_event_detail_service
+- kafka_stock_service
