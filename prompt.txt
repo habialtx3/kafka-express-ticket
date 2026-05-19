@@ -1,0 +1,7 @@
+update issue md, saya ingin melakukan testing :
+- apa aplikasi nya sudah jalan ?
+-sudah terhubung dengan database ?
+- apakah sudah benar flow nya ?
+- apakah kafka sudah berjalan ?
+
+buatkan langkah langkah implementasi nya sehingga nantinya bisa dikerjakan oleh junior dan mid programmer serta ai model yang lebih murah
