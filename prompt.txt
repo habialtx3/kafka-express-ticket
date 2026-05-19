@@ -1,7 +1,4 @@
-update issue md, saya ingin melakukan testing :
-- apa aplikasi nya sudah jalan ?
--sudah terhubung dengan database ?
-- apakah sudah benar flow nya ?
-- apakah kafka sudah berjalan ?
-
-buatkan langkah langkah implementasi nya sehingga nantinya bisa dikerjakan oleh junior dan mid programmer serta ai model yang lebih murah
+hapus branch sebelumnya
+update issue md, isikan dengan issue bahwa saya ingin membuat docs dengan md 
+semua flow nya gimana, cara testingnya (body nya apa, url nya apa, lalu reponse nya apa aja)
+requirement system, apa yang harus dilakukan agar sistem nya run

@@ -1,82 +1,91 @@
-# Issue: End-to-End System Testing & Verification
+# Issue: Pembuatan Dokumentasi Sistem (docs.md / README.md)
 
 ## Tujuan
-Melakukan verifikasi secara komprehensif terhadap sistem Ticket Booking Microservice untuk memastikan semua komponen berjalan dengan baik. Issue ini didesain agar mudah dieksekusi oleh Junior/Mid Programmer maupun AI Model.
+Membuat dokumentasi proyek secara komprehensif dalam bentuk file Markdown (`docs.md` atau `README.md`). Dokumentasi ini akan menjadi panduan utama (onboarding) bagi tim developer untuk memahami, menjalankan, dan melakukan testing API pada *Ticket Booking Microservice System*.
 
-## Checklist Pengujian
-
-- [ ] 1. Apakah Kafka sudah berjalan?
-- [ ] 2. Apakah database (MySQL) sudah berjalan dan aplikasi berhasil terhubung?
-- [ ] 3. Apakah semua service aplikasi berhasil dijalankan?
-- [ ] 4. Apakah flow event-driven (registrasi -> event -> booking -> notifikasi) sudah benar?
+**Penting untuk Assignee:** Ikuti kerangka (outline) di bawah ini secara persis agar hasilnya mendetail dan mudah dimengerti (sangat cocok untuk dikerjakan oleh Junior/Mid Programmer atau Model AI).
 
 ---
 
-## Langkah-Langkah Implementasi & Verifikasi
+## Kerangka (Outline) Dokumentasi yang Harus Dibuat
 
-### Tahap 1: Persiapan Environment (Database & Kafka)
-**Tujuan**: Memastikan prasyarat infrastruktur (Kafka dan MySQL) sudah berjalan dengan benar.
-1. Pastikan Anda memiliki instance MySQL yang berjalan pada `localhost:3306` (username default: `root`, password default: `rootpassword`).
-2. Pastikan Anda memiliki instance Apache Kafka (dan Zookeeper) yang berjalan pada `localhost:9092`.
-   - *Catatan: Jika environment Anda menggunakan kredensial atau port yang berbeda, silakan update nilai pada file `.env` di masing-masing folder service terlebih dahulu.*
-3. **Verifikasi Kafka**: Anda bisa memverifikasi konektivitas Kafka menggunakan tool bawaan Kafka (seperti `kafka-topics.sh`) atau sekadar memastikan log server Kafka tidak menunjukkan error.
+Buatlah file `docs.md` dengan isi detail berikut. Gunakan format Markdown yang rapi (*Headers*, *Code Blocks*, dan *Lists*).
 
-### Tahap 2: Menjalankan Microservices (Test Koneksi & Startup)
-**Tujuan**: Memastikan aplikasi dapat berjalan dengan baik dan melakukan koneksi ke Database serta Kafka. Saat dijalankan, aplikasi akan otomatis mengeksekusi DDL script untuk membuat database dan tabel yang dibutuhkan (self-healing schema).
+### 1. System Requirements (Prasyarat Sistem)
+Tuliskan bahwa sistem ini membutuhkan:
+- **Node.js** (v16 atau lebih baru)
+- **MySQL** (Berjalan di `localhost:3306`, user default: `root`, password default: `rootpassword` - bisa disesuaikan melalui file `.env`)
+- **Apache Kafka & Zookeeper** (Berjalan di port `9092` dan `2181`)
 
-Buka 4 terminal terpisah di root folder project, dan jalankan masing-masing service secara berurutan:
+### 2. Setup & Cara Menjalankan Sistem
+Berikan instruksi (berupa *copy-pasteable bash commands*) untuk:
+1. **Install Dependensi**:
+   Instruksikan untuk menjalankan `npm install` di root directory, serta di dalam masing-masing folder (`booking-service`, `event-detail-service`, `stock-service`, `notification-service`).
+2. **Setup Database**:
+   Sebutkan bahwa tidak perlu melakukan migrasi manual. Cukup jalankan aplikasi karena sistem dilengkapi dengan fitur *self-healing schema* (sistem secara otomatis menjalankan `CREATE DATABASE IF NOT EXISTS` dan `CREATE TABLE` ketika startup).
+3. **Menjalankan Services**:
+   Sediakan *command* untuk menjalankan 4 terminal berbeda secara bersamaan:
+   - Terminal 1: `cd booking-service && npm run dev`
+   - Terminal 2: `cd event-detail-service && npm run dev`
+   - Terminal 3: `cd stock-service && npm run dev`
+   - Terminal 4: `cd notification-service && npm run dev`
 
-**Terminal 1 (Booking Service)**:
-```bash
-cd booking-service
-npm run dev
-```
-*Ekspektasi Output*: Harus muncul log `Database kafka_booking_service initialized successfully.` disusul dengan `booking-service running on port 3000` dan log bahwa Kafka Consumer terkoneksi.
+### 3. Alur Aplikasi (Event-Driven System Flow)
+Jelaskan alur (flow) event-driven aplikasi ini secara berurutan:
+1. **User Auth**: User melakukan register dan login di `booking-service`.
+2. **Pembuatan Event**: Admin membuat event baru via `event-detail-service`. Service ini lalu mem-publish event Kafka ke topic `event.created`.
+3. **Inisialisasi Stok**: `stock-service` mengonsumsi event `event.created` dan otomatis membuat *record* stok (seat) awal di database.
+4. **Request Booking**: User memanggil API create booking di `booking-service`. Booking disimpan dengan status awal `PENDING`. Service ini kemudian mem-publish event `ticket.requested`.
+5. **Reservasi Stok Atomik**: `stock-service` mengonsumsi event `ticket.requested`. Menggunakan query pengecekan SQL atomik secara langsung di DB (`UPDATE ... WHERE availableSeats >= quantity`), service menjamin tidak terjadi *race condition* atau stok minus. Jika berhasil, publish event `seat.reserved`. Jika kapasitas habis, publish event `seat.failed`.
+6. **Update Status**: `booking-service` mengonsumsi hasil dari Kafka dan mengubah status booking menjadi `PAYMENT_PENDING` atau `FAILED`.
+7. **Simulasi Pembayaran**: User memanggil API pembayaran. Status booking berubah menjadi `CONFIRMED` dan mem-publish event `payment.success`.
+8. **Pencatatan Notifikasi**: `notification-service` sebagai *worker* terus memantau semua topik di atas dan mencatat notifikasinya di konsol secara asinkron.
 
-**Terminal 2 (Event Detail Service)**:
-```bash
-cd event-detail-service
-npm run dev
-```
-*Ekspektasi Output*: Harus muncul log `Database kafka_event_detail_service initialized successfully.` disusul dengan `event-detail-service running on port 3001`.
+### 4. Panduan Testing API (Cara Testing dengan Postman / cURL)
+Sediakan rincian lengkap untuk pengujian manual. Tuliskan masing-masing API dengan elemen berikut: Method HTTP, URL (localhost + port yang tepat), Request Body (contoh payload JSON), dan Expected Response.
 
-**Terminal 3 (Stock Service)**:
-```bash
-cd stock-service
-npm run dev
-```
-*Ekspektasi Output*: Harus muncul log `Database kafka_stock_service initialized successfully.`, `stock-service running on port 3002`, dan log Kafka Consumer terkoneksi (mendengarkan topic `event.created` dan `ticket.requested`).
+*Berikut adalah daftar referensi detail yang harus Anda tuliskan dalam dokumen:*
 
-**Terminal 4 (Notification Service)**:
-```bash
-cd notification-service
-npm run dev
-```
-*Ekspektasi Output*: Harus muncul log `notification-service worker starting...` dan log Kafka Consumer terkoneksi (mendengarkan berbagai notifikasi).
+#### A. Auth API (`booking-service` - Port 3000)
+1. **Register User**
+   - **Method/URL**: `POST http://localhost:3000/auth/register`
+   - **Body**: `{ "username": "user1", "email": "user1@mail.com", "password": "123" }`
+   - **Response (201)**: `{ "message": "User registered successfully" }`
+2. **Login User**
+   - **Method/URL**: `POST http://localhost:3000/auth/login`
+   - **Body**: Sama seperti register.
+   - **Response (200)**: `{ "message": "Login successful", "token": "ey..." }`
+   - *Instruksi Tambahan:* Ingatkan pembaca untuk menyalin `token` untuk mengakses endpoint booking dengan Header `Authorization: Bearer <token>`.
 
-### Tahap 3: Pengujian Flow Aplikasi (End-to-End)
-**Tujuan**: Memverifikasi logika bisnis, integritas data, dan kelancaran event flow antar microservice.
+#### B. Event API (`event-detail-service` - Port 3001)
+3. **Create Event**
+   - **Method/URL**: `POST http://localhost:3001/events`
+   - **Body**: `{ "title": "Konser Rock", "date": "2026-10-10", "location": "Jakarta", "price": 100000, "totalSeats": 5 }`
+   - **Response (201)**: `{ "message": "Event created successfully", "event": { "id": 1, ... } }`
 
-Kami telah menyediakan skrip pengujian otomatis yang akan menyimulasikan perjalanan seorang user. Buka **Terminal 5** di root folder project, lalu jalankan:
-```bash
-node test-flow.js
-```
+#### C. Stock API (`stock-service` - Port 3002)
+4. **Check Stock**
+   - **Method/URL**: `GET http://localhost:3002/stocks/1` (dimana '1' adalah ID event)
+   - **Response (200)**: `{ "eventId": 1, "totalSeats": 5, "reservedSeats": 0, "availableSeats": 5 }`
 
-**Verifikasi Output pada Skrip `test-flow.js`:**
-1. **Registrasi & Login**: Pastikan mendapatkan pesan `Registration successful!` dan `Login successful! Token acquired.`.
-2. **Pembuatan Event**: Pastikan mendapat pesan `Event created successfully!`. Secara asinkron, periksa terminal **Stock Service** untuk memastikan ia menampilkan log inisialisasi stock (event dikirim via Kafka topic `event.created`).
-3. **Booking Sukses (Kapasitas Tersedia)**: Skrip akan memesan 3 tiket. Pastikan Booking 1 berhasil, dan status akhirnya terupdate menjadi `PAYMENT_PENDING` setelah beberapa detik.
-4. **Booking Gagal (Kapasitas Habis - Uji Race Condition)**: Skrip akan mencoba memesan 3 tiket lagi (padahal sisa kapasitas tinggal 2). Pastikan Booking 2 ditolak dan statusnya menjadi `FAILED` (karena terblokir oleh pengecekan level database di Stock Service).
-5. **Pembayaran**: Pastikan simulasi pembayaran Booking 1 berhasil (`Status: CONFIRMED`).
-6. **Verifikasi Stok Akhir**: Skrip akan mengecek stok akhir untuk memastikan integritas data (`available: 2, reserved: 3`).
+#### D. Booking API (`booking-service` - Port 3000)
+5. **Create Booking**
+   - **Method/URL**: `POST http://localhost:3000/bookings`
+   - **Headers**: `Authorization: Bearer <token>`
+   - **Body**: `{ "eventId": 1, "quantity": 3 }`
+   - **Response (202)**: `{ "message": "Booking request accepted...", "bookingId": 1, "status": "PENDING" }`
+6. **Check Booking Status**
+   - **Method/URL**: `GET http://localhost:3000/bookings/1` (dimana '1' adalah ID booking)
+   - **Headers**: `Authorization: Bearer <token>`
+   - **Response (200)**: JSON objek booking lengkap. (Jelaskan bahwa setelah menunggu beberapa detik, status seharusnya berubah menjadi `PAYMENT_PENDING` atau `FAILED` jika stok tidak mencukupi).
+7. **Simulasi Pembayaran (Pay Booking)**
+   - **Method/URL**: `POST http://localhost:3000/bookings/1/pay`
+   - **Headers**: `Authorization: Bearer <token>`
+   - **Response (200)**: `{ "message": "Payment simulated successfully...", "booking": { "id": 1, "status": "CONFIRMED" } }`
 
-**Verifikasi Output pada Terminal Notification Service:**
-Selama skrip berjalan, pastikan pada **Terminal 4 (Notification Service)**, Anda melihat log notifikasi event ini secara *real-time*:
-- `🔔 Booking Request...` (User meminta tiket)
-- `✅ Seat Reserved...` (Tiket berhasil di-reserve)
-- `❌ Reservation Failed...` (Tiket gagal di-reserve untuk percobaan kedua)
-- `🎉 Payment Successful...` (Pembayaran selesai dan tiket terbit)
+---
 
-### Tahap 4: Penyelesaian & Pelaporan
-Jika seluruh checklist pada Tahap 1 hingga Tahap 3 berhasil dilalui tanpa error, berikan tanda centang (`[x]`) pada checklist di bagian atas dokumen ini.
-Jika ditemukan masalah (contoh: koneksi database ditolak, Kafka timeout, atau terdapat status booking yang *stuck* di `PENDING`), segera lampirkan error log tersebut di komentar issue/PR terkait untuk di-debug lebih lanjut.
+## Kriteria Selesai (Definition of Done)
+1. File `docs.md` (atau `README.md`) telah di-commit ke *root folder* repositori.
+2. Format *Markdown* ditulis dengan sangat rapi (bersih, dengan *code formatting* yang layak dibaca).
+3. Seluruh panduan outline di atas telah dimasukkan secara mendetail agar programmer yang baru masuk (onboarding) langsung mengerti sistem sepenuhnya hanya dengan membaca dokumen ini.
